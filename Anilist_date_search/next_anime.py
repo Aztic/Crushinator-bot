@@ -16,20 +16,24 @@ client = AniList(client_id=Client_ID, client_secret=Client_Secret)
 #
 #Return possibilities
 #0 == Not found, write it properly
-#-1 == Is not airing
-#else == Anime ID
+#-1 == anime is not airing
+#-2 == manga is not publishing
+#else == Anime/manga ID
 def search_thing(name, path, a_object):
 	the_list = a_object.get(path)
 	if len(the_list) > 1:
 		for i in the_list:
 			if name == i['title_romaji'] or name == i['title_english'] or name == i['title_japanese']:
-				if i['airing_status'] != 'currently airing':
+				if 'anime' in path and i['airing_status'] != 'currently airing':				
 					return -1
+				elif 'manga' in path and i['publishing_status'] != 'publishing':
+					return -2
 				return i['id']
 	return 0
 
 
 #Returns the date of the next episode
+#Anilist only supports anime atm
 def search_with_id(id, a_object):
 	the_list = a_object.get('anime/',id,'/airing/')
 	#Search the "lowest" episode in the dictionary
@@ -61,5 +65,5 @@ def date_things(seconds, want_to_show, anime, want_to_return):
 	print(days,"days ",hours,"hours ", mins,"minutes ", secs, "seconds until next episode")
 	#if you want to return the string
 	if want_to_return:
-		string_to_return = str(days) + " days " + str(hours) + " hours " + str(mins) + " minutes " + str(secs) + " seconds until next episode"
-		return string_to_return
+		dict_to_return = {'days':str(days), 'hours':str(hours), 'minutes':str(mins), 'seconds':str(secs)}
+		return dict_to_return
