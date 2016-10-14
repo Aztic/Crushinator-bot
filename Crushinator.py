@@ -26,8 +26,8 @@ async def on_ready():
 async def on_message(message):
 	if message.content.startswith('$next'):
 		search = message.content.split("$next ")[1]
-		path = 'anime/search/' + search
-		an_id = next_anime.search_thing(search,path,al_client)
+		path = 'anime/search/' + search.lower()
+		an_id = next_anime.search_thing(search.lower(),path,al_client)
 		if an_id == -1:
 			await d_client.send_message(message.channel, search + ' is not airing')
 		elif not an_id:
