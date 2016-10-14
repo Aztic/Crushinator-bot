@@ -21,9 +21,9 @@ client = AniList(client_id=Client_ID, client_secret=Client_Secret)
 #else == Anime/manga ID
 def search_thing(name, path, a_object):
 	the_list = a_object.get(path)
-	if len(the_list) > 1:
+	if the_list:
 		for i in the_list:
-			if name == i['title_romaji'] or name == i['title_english'] or name == i['title_japanese']:
+			if name == i['title_romaji'].lower() or name == i['title_english'].lower() or name == i['title_japanese']:
 				if 'anime' in path and i['airing_status'] != 'currently airing':				
 					return -1
 				elif 'manga' in path and i['publishing_status'] != 'publishing':
