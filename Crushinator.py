@@ -8,6 +8,7 @@ import os
 BOT_TOKEN = os.getenv('BOT_TOKEN')
 CLIENT_ID = os.getenv('CLIENT_ID')
 CLIENT_SECRET = os.getenv('CLIENT_SECRET')
+P_ID = os.getenv('DISCORD_ID')
 
 al_client = next_anime.client
 d_client = discord.Client()
@@ -24,11 +25,22 @@ async def on_ready():
 
 @d_client.event
 async def on_message(message):
+	if message.author == d_client.user:
+		return
+	#Anilist Things	
 	if message.content.startswith('$next'):
 		search = message.content.split("$next ")[1]
+		split_search = search.split()
+		split_search = [i.lower() for i in split_search]
 		path = 'anime/search/' + search.lower()
 		an_id = next_anime.search_thing(search.lower(),path,al_client)
-		if an_id == -1:
+		
+		#Do a "splitted" search. This checks if there's any result that have
+		#all words of search. For example 'One piece gold' == ['one', 'piece', 'gold']
+		#And, since there's a result called "One piece film gold", it returns the id.
+		if an_id is None:
+			an_id = next_anime.splitted_search(split_search,path,al_client)
+		if an_id is -1:
 			await d_client.send_message(message.channel, search + ' is not airing')
 		elif not an_id:
 			await d_client.send_message(message.channel, 'Not found, write it properly')
@@ -36,13 +48,18 @@ async def on_message(message):
 			secs = next_anime.search_with_id(an_id,al_client)
 			the_dict = next_anime.date_things(secs,0,search,1)
 			the_string = ''
-			order = ['days', 'hours', 'minutes', 'seconds']
+			order = ['day', 'hour', 'minute', 'second']
 			for i in order:
 				if the_dict[i] != '0':
-					the_string += the_dict[i] + ' ' + i + ' '
+					the_string += the_dict[i] + ' ' + i
+					if int(the_dict[i]) > 1:
+						the_string += 's' + ' '
+					else:
+						the_string += ' '
 			print(search)
 			await d_client.send_message(message.channel, the_string)
-
+			
+	#RIOT api things
 	if message.content == '$free week':
 		await d_client.send_message(message.channel, ', '.join(commands.free_week(r_client)))
 
@@ -84,8 +101,12 @@ async def on_message(message):
 			string_to_print += '\n'
 		await d_client.send_message(message.channel, string_to_print)
 
+
 	if message.content == '$help':
 		await d_client.send_message(message.channel, documents.help_command)
+	#future changes
+	elif message.content.startswith('$help'):
+		await d_client.send_message(message.channel, "Maybe later. I'm tired")
 
 
 
