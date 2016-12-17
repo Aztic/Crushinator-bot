@@ -17,7 +17,7 @@ import os
 
 
 
-BOT_TOKEN = os.getenv('CRUSHINATOR_BOT_TOKEN')
+
 CLIENT_ID = os.getenv('CLIENT_ID')
 CLIENT_SECRET = os.getenv('CLIENT_SECRET')
 P_ID = os.getenv('DISCORD_ID')
