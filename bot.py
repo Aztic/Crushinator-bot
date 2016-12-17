@@ -16,8 +16,6 @@ import os
 
 
 
-
-
 CLIENT_ID = os.getenv('CLIENT_ID')
 CLIENT_SECRET = os.getenv('CLIENT_SECRET')
 P_ID = os.getenv('DISCORD_ID')
@@ -98,6 +96,7 @@ class Bot:
 			'$banned words':self.banned_words,
 			'$say ':self.bot_say,
 			'$change game ':self.change_game,
+			'$manga ':self.anime,
 		}
 
 	def __repr__(self):
@@ -211,7 +210,10 @@ class Bot:
 
 	async def anime(self,content):
 		split_search = [i.lower() for i in content.split()]
-		path = 'anime/search/' + content.lower()
+		if 'anime' in self.message.content:
+			path = 'anime/search/' + content.lower()
+		else:
+			path = 'manga/search/' + content.lower()
 		try:
 			url = anime_search.search_thing(content.lower(),path,self.al_client)
 			if not url:
