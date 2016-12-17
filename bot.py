@@ -299,7 +299,7 @@ class Bot:
 
 	async def restart_bot(self,*nothing):
 		if self.message_author_id == P_ID:
-			os.system('cls && python new_bot.py"')
+			os.system('cls && python Crushinator_bot.py"')
 
 	async def help_only(self,*nothing):
 		await self.d_client.send_message(self.message_channel, documents.help_command)
