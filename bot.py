@@ -1,10 +1,12 @@
-from Anilist import next_anime, anime_search
+# -*- coding: utf-8 -*-
+
+from Anilist import next_anime, anime_search, character_search
 from Documentation import documents
 from Weather import weather_client
 from riot_client import commands
 from random import choice
 from functions import Function
-from imgurpython import ImgurClient
+from Html_libs import html_content
 import time
 import discord
 import requests
@@ -16,15 +18,16 @@ import os
 
 
 
+
+BOT_TOKEN = os.getenv('CRUSHINATOR_BOT_TOKEN')
 CLIENT_ID = os.getenv('CLIENT_ID')
 CLIENT_SECRET = os.getenv('CLIENT_SECRET')
 P_ID = os.getenv('DISCORD_ID')
 API_KEY = os.getenv('OPENWEATHER_API_KEY')
 TAG_PATH = os.path.join(os.getcwd(),"Images/Tags/")
 ANIME_PATH = os.path.join(os.getcwd(),"Images/Anime command/")
+CHARACTER_PATH = os.path.join(os.getcwd(),"Images/Characters/")
 LOG_PATH = os.path.join(os.getcwd(),'Logs')
-IMGUR_ID = os.getenv('IMGUR_CLIENT_ID')
-IMGUR_SECRET = os.getenv('IMGUR_CLIENT_SECRET')
 supported_formats = ['jpg', 'jpeg', 'gif', 'png', 'bmp']
 nya_url = 'https://nya.is/upload.php?output=json'
 
@@ -56,11 +59,11 @@ class Bot:
 		self.message = ''
 		self.message_author = ''
 		self.message_author_id = ''
-		self.author_server_permissions = ''
+		self.author_server_permissions = []
 		self.message_server_id = ''
 		self.message_channel = ''
-		self.server_roles = ''
-		self.server_roles_permissions = ''
+		self.server_roles = []
+		self.server_roles_permissions = []
 
 		#data load
 		self.words_data = json.load(open('words'))
@@ -97,6 +100,12 @@ class Bot:
 			'$say ':self.bot_say,
 			'$change game ':self.change_game,
 			'$manga ':self.anime,
+			'$ud ':self.urban_dictionary,
+			'$to_kanji ':self.jisho,
+			'$to_def ': self.jisho,
+			"$purge ":self.purge,
+			'$clean channel':self.purge_all,
+			'$character ':self.character_search,
 		}
 
 	def __repr__(self):
@@ -124,52 +133,53 @@ class Bot:
 		need_to = False
 		if message.author == self.d_client.user:
 			return
+		content = message.content.split(' &&do ')
 		self.message = message
 		self.message_author = message.author
 		self.message_author_id = message.author.id
-		try:
-			self.message_server_id = message.server.id
-		except:
-			pass
-		self.message_channel = message.channel
-		if await self.clean_message(message.content.split()):
-			return
-		#special case
-		if message.content == '$weather':
-			await self.weather_only()
-			need_to = True
-		elif message.content == '$help':
-			await self.help_only()
-			need_to = True
-		else:
-			for index in self.bot_functions:
-				if message.content.startswith(index):
-					f = index
-					break
-
-
 		s_roles = message.server.roles
 		author_roles = message.author.roles
 		self.server_roles = [i.name.lower() for i in s_roles]
 		self.server_roles_permissions = [i.permissions.value for i in s_roles]
 		self.author_server_permissions = [i.permissions.value for i in author_roles]
-
-		if f:
-			need_to = True
-			await self.bot_functions[f](message.content.split(f).pop())
-		if need_to:
-			self._create_log('{}({}) requested {} from {} at {}'.format(message.author,message.author.id,message.content,message.server,time.strftime("%H:%M:%S")))
+		try:
+			self.message_server_id = message.server.id
+		except:
+			pass
+		self.message_channel = message.channel
+		if self.message.server.id in self.words_data and await self.clean_message(message.content.split()):
+			return
+		if '┻━┻' in self.message.content and '>(' not in self.message.content:
+			await self.d_client.send_message(self.message_channel,'(ヘಠ益ಠ)ヘ┳━┳')
+		for i in content:
+		#special case
+			if i == '$weather':
+				await self.weather_only()
+				need_to = True
+			elif i == '$help':
+				await self.help_only()
+				need_to = True
+			else:
+				for index in self.bot_functions:
+					if i.startswith(index):
+						f = index
+						break
+			if f:
+				need_to = True
+				await self.bot_functions[f](message.content.split(f).pop())
+			if need_to:
+				self._create_log('{}({}) requested {} from {} at {}'.format(message.author,message.author.id,message.content,message.server,time.strftime("%H:%M:%S")))
 		self._clean_vars()
 
 	def _clean_vars(self):
 		self.message = ''
 		self.message_author = ''
 		self.message_author_id = ''
-		self.author_server_permissions = ''
+		self.author_server_permissions = []
 		self.message_server_id = ''
 		self.message_channel = ''
-		self.server_roles == ''
-		self.server_roles_permissions = ''
+		self.server_roles == []
+		self.server_roles_permissions = []
 
 	def run_bot(self,intervals=None):
 		if not intervals:
@@ -237,6 +247,49 @@ class Bot:
 			image = await self.d_client.send_file(self.message_channel, filename)
 			await self.d_client.edit_message(image, url)
 
+	async def character_search(self,content):
+		result = character_search.search_character(content,self.al_client)
+		if not result:
+			await self.d_client.send_message(self.message_channel,"Not found")
+			return
+		if len(result) > 1:
+			all_c = ['{} {}'.format(i['name_first'],i['name_last']) if i['name_last'] else i['name_first'] for i in result]
+			characters = ''
+			for i,value in enumerate(all_c):
+				characters += '{}: {}\n'.format(i+1,value)
+			await self.d_client.send_message(self.message_channel,"Which {}?\n{}".format(content,characters))
+			
+			#await self.d_client.send_message(self.message_channel,characters)
+			ch = self.message.channel
+			option = await self.d_client.wait_for_message(timeout=60.0,author=self.message_author)
+			if not option:
+				await self.d_client.send_message(ch,"You took too long")
+				return
+			if int(option.content)-1 not in range(len(all_c)):
+				await self.d_client.send_message(ch,"Invalid option")
+				return
+			else:
+				character = result[int(option.content)-1]
+				self.message_channel = ch
+		else:
+			character = result[0]
+		filename = CHARACTER_PATH + character['image_url_lge'].split('/')[-1]
+		if character['image_url_lge'].split('/')[-1] not in os.listdir(CHARACTER_PATH):
+			print('{} Not in path'.format(content))
+			file = urllib.request.urlopen(urllib.request.Request(character['image_url_lge'], headers={'User-Agent':'characters/0.0.0'}))
+			output = open(filename, 'wb')
+			output.write(file.read())
+			output.close()
+		image = await self.d_client.send_file(self.message_channel, filename)
+		try:
+			await self.d_client.edit_message(image, '{}'.format(character_search.display_info(character)))
+		except:
+			await self.d_client.edit_message(image, '{}'.format(character_search.simple_display(character)))
+
+
+
+
+
 	async def free_week(self,*Nothing):
 		await self.d_client.send_message(self.message_channel,commands.free_week(self.r_client))
 
@@ -301,7 +354,7 @@ class Bot:
 
 	async def restart_bot(self,*nothing):
 		if self.message_author_id == P_ID:
-			os.system('cls && python Crushinator_bot.py"')
+			os.system('clear && python Crushinator_bot.py')
 
 	async def help_only(self,*nothing):
 		await self.d_client.send_message(self.message_channel, documents.help_command)
@@ -315,22 +368,36 @@ class Bot:
 				await self.d_client.send_message(self.message_channel, 'I can\'t help you with that')
 
 	async def tag_send(self,content):
-		if content in self.tag_data:
-			await self.d_client.send_message(self.message_channel,self.tag_data[content])
+		if content in self.tag_data[self.message.server.id] and self.message.server.id in self.tag_data:
+			await self.d_client.send_message(self.message_channel,self.tag_data[self.message.server.id][content])
 		else:
 			await self.d_client.send_message(self.message_channel,"Unknown tag")
 
 	async def tag_list(self,*nothing):
-		await self.d_client.send_message(self.message_channel,'```{}```'.format(', '.join(list(self.tag_data))))
+		if self.message.server.id in self.tag_data and self.tag_data[self.message.server.id]:
+			await self.d_client.send_message(self.message_channel,'```{}```'.format(', '.join(list(self.tag_data[self.message.server.id]))))
+		else:
+			await self.d_client.send_message(self.message_channel,"Empty")
 
 	async def tag_save(self,content):
 		splitted = content.split()
-		url = splitted[-1]
+		attachments = self.message.attachments
+		if attachments:
+			url = attachments[0]['url']
+		else:
+			url = splitted[-1]
 		extension = url.split('.')[-1].lower()
-		name = ' '.join(splitted[0:len(splitted)-1]) + '.' + extension
+		if attachments:
+			name = content + '.' + extension
+			name1 = content
+		else:
+			name = ' '.join(splitted[0:len(splitted)-1]) + '.' + extension
+			name1 = ' '.join(splitted[0:len(splitted)-1])
 		if extension not in supported_formats:
 			t_m_p = await self.d_client.send_message(self.message_channel, 'Saving...')
-			self.tag_data[' '.join(splitted[0:len(splitted)-1])] = url
+			if self.message.server.id not in self.tag_data:
+				self.tag_data[self.message.server.id] = {}
+			self.tag_data[self.message.server.id][name1] = url
 			await self.d_client.edit_message(t_m_p,'Saved successfully')
 			json.dump(self.tag_data,open('tags','w'))
 			return
@@ -340,7 +407,9 @@ class Bot:
 			files = {'files[]':(name,file)}
 			r = requests.post(nya_url,files=files)
 			if r.json()['success']:
-				self.tag_data[' '.join(splitted[0:len(splitted)-1])] = r.json()['files'][0]['url']
+				if self.message.server.id not in self.tag_data:
+					self.tag_data[self.message.server.id] = {}
+				self.tag_data[self.message.server.id][name1] = r.json()['files'][0]['url']
 			else:
 				await self.d_client.send_message(self.message_channel,'Error, can\'t upload')
 				return
@@ -431,7 +500,7 @@ class Bot:
 				for person in content:
 					try:
 						await self.d_client.kick(person)
-						await self.d_client.send_message(self.message_channel,'{0.mention} used tyranny and kicked {1.mention}'.format(message.author, i))
+						await self.d_client.send_message(self.message_channel,'{0.mention} used tyranny and kicked {1.mention}'.format(self.message.author, person))
 					except:
 						await self.d_client.send_message(self.message_channel,'Bot Privilege is too low')
 		else:
@@ -439,6 +508,8 @@ class Bot:
 
 	async def function_der(self,content):
 		f = Function(content)
+		await self.d_client.send_message(self.message_channel,'Disabled')
+		return
 		try:
 			await self.d_client.send_message(self.message_channel, f.der)
 		except:
@@ -459,6 +530,8 @@ class Bot:
 		await self.d_client.delete_message(self.message)
 
 	async def clean_message(self,content):
+		if at_least_one(self.author_server_permissions,self.words_data[self.message_server_id]['allowed_ranks']) and self.message.content.startswith('$unban word '):
+			return False
 		for word in content:
 			if word in self.words_data[self.message_server_id]['forbidden_words']:
 				await self.d_client.delete_message(self.message)
@@ -468,7 +541,51 @@ class Bot:
 	async def change_game(self,content=None):
 		if content is None:
 			content = '$help'
+		elif self.message.author.id != P_ID:
+			return
 		await self.d_client.change_presence(game=discord.Game(name=content))
+
+	async def urban_dictionary(self,content):
+		try:
+			text = html_content.process_ud(content)
+			await self.d_client.send_message(self.message_channel,'**{}**\n{}'.format(content,text))
+		except:
+			await self.d_client.send_message(self.message_channel, 'Not found')
+
+	async def jisho(self,content):
+		try:
+			r = html_content.process_js(content)
+			if 'to_kanji' in self.message.content:
+				await self.d_client.send_message(self.message_channel, list(r)[0])
+			else:
+				value = ''
+				for i in r:
+					for x in r[i]:
+						value += x
+				await self.d_client.send_message(self.message_channel, value)
+		except:
+			await self.d_client.send_message(self.message_channel,'Not found')
+
+	async def purge(self,content):
+		content = int(content)
+		try:
+			if content > 100:
+				times, extra = divmod(content,100)
+				for i in range(times):
+					await self.d_client.purge_from(self.message_channel)
+				await self.d_client.purge_from(self.message_channel,limit=extra)
+			else:
+				await self.d_client.purge_from(self.message_channel,limit=content)
+		except:
+			print("Error with purge")
+
+	async def purge_all(self,*nothing):
+		counter = 0
+		all_messages = self.d_client.messages
+		target_channel = self.message_channel
+		for message_step in all_messages:
+			if message_step.channel == target_channel:
+				self.d_client.delete_message(message_step)
 
 
 
