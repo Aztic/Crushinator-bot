@@ -7,7 +7,6 @@ from riot_client import commands
 from random import choice
 from functions import Function
 from Html_libs import html_content
-import time
 import discord
 import requests
 import time
@@ -354,7 +353,7 @@ class Bot:
 
 	async def restart_bot(self,*nothing):
 		if self.message_author_id == P_ID:
-			os.system('clear && python Crushinator_bot.py')
+			os.system('clear && python3 Crushinator_bot.py')
 
 	async def help_only(self,*nothing):
 		await self.d_client.send_message(self.message_channel, documents.help_command)
