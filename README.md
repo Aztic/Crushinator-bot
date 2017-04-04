@@ -1,2 +1,2 @@
-# Crushinator-bot
+# Nyoko-bot
 A discord bot
