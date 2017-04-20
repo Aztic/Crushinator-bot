@@ -4,7 +4,7 @@ import urllib.request
 import urllib.parse
 from bs4 import BeautifulSoup
 
-user_agent = 'Discord bot (https://github.com/Aztic/Crushinator-bot)'
+user_agent = 'Discord bot (https://github.com/Aztic/Nyoko-bot)'
 base_url_ud = 'https://www.urbandictionary.com/define.php?term='
 base_url_jisho = 'http://jisho.org/search/'
 
