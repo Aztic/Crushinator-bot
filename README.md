@@ -10,5 +10,6 @@ A ~~beautiful~~ discord bot
 - [Anilist Client](https://github.com/noisypixy/python-anilist)
 - [Riot api client](https://github.com/Aztic/riot-api-client)
 - Openweather client
+
 For almost every client, you'll need respective API's token. Put them in "tokens" file.
 
