@@ -3,7 +3,8 @@
 from Anilist import next_anime, anime_search, character_search
 from Documentation import documents
 from Weather import weather_client
-from riot_client import commands
+import commands
+from riot_client import Riot
 from random import choice
 from functions import Function
 from Html_libs import html_content
@@ -15,20 +16,32 @@ import json
 import asyncio
 import os
 
+TOKENS = json.load(open('tokens','r'))
 
-
-
-BOT_TOKEN = os.getenv('CRUSHINATOR_BOT_TOKEN')
-CLIENT_ID = os.getenv('CLIENT_ID')
-CLIENT_SECRET = os.getenv('CLIENT_SECRET')
-P_ID = os.getenv('DISCORD_ID')
-API_KEY = os.getenv('OPENWEATHER_API_KEY')
+RIOT_KEY = TOKENS['RIOT_API_KEY']
+BOT_TOKEN = TOKENS['CRUSHINATOR_BOT_TOKEN']
+CLIENT_ID = TOKENS['ANILIST_CLIENT_ID']
+CLIENT_SECRET = TOKENS['ANILIST_CLIENT_SECRET']
+P_ID = TOKENS['DISCORD_ID']
+API_KEY = TOKENS['OPENWEATHER_API_KEY']
 TAG_PATH = os.path.join(os.getcwd(),"Images/Tags/")
 ANIME_PATH = os.path.join(os.getcwd(),"Images/Anime command/")
 CHARACTER_PATH = os.path.join(os.getcwd(),"Images/Characters/")
 LOG_PATH = os.path.join(os.getcwd(),'Logs')
 supported_formats = ['jpg', 'jpeg', 'gif', 'png', 'bmp']
 nya_url = 'https://nya.is/upload.php?output=json'
+
+
+greetings_base = ['Qué pasó', 'Qué lo qué', 'Qué dice', 'Ládrame',
+				'Háblame']
+greetings_complement = ['Mano', 'Manubrio', 'Manaure', 'Manao',
+						'Manivela','Manufactura','Manicura',
+						'Manopla', 'Manifiesto', 'Manantial',
+						'Manatí','Maniobra','Manaplás','Manaure',
+						]
+
+
+
 
 def kelvin_to_celsius(kelvin):
 	return kelvin - 273.15
@@ -45,13 +58,18 @@ def at_least_one(List_a, List_b):
 
 class Bot:
 	def __init__(self,Token=None):
+
 		if Token is None or not isinstance(Token,str):
 			raise('You must pass client')
 
+
+		#os.system('gnome-terminal')
+		#temp = os.listdir('/dev/pts/')[0]
+		#self.terminal_log = '/dev/pts/' + temp
 		#Clients
 		self.token = Token
 		self.d_client = discord.Client()
-		self.r_client = commands.client
+		self.r_client = Riot(RIOT_KEY)
 		self.op_client = weather_client.Weather(API_KEY)
 		self.al_client = next_anime.client
 
@@ -113,9 +131,10 @@ class Bot:
 	def event(self, *args, **kwargs):
 		return self.d_client.event(*args, **kwargs)
 
-	def _create_log(self,content):
+	def _create_log(self,content,content2):
 		today = time.strftime('%d-%m-%y')
 		t_file = os.path.join(LOG_PATH, today)
+		#os.system("echo '{}' > {}\n".format(content2,self.terminal_log))
 		if not os.path.isfile(t_file):
 			f = open(t_file,'w+',encoding="utf-8")
 			f.write(content+'\n')
@@ -132,21 +151,23 @@ class Bot:
 		need_to = False
 		if message.author == self.d_client.user:
 			return
+		if self.d_client.user in message.mentions:
+			await self.d_client.send_message(message.channel,'{} {}'.format(choice(greetings_base),choice(greetings_complement)))
 		content = message.content.split(' &&do ')
 		self.message = message
 		self.message_author = message.author
 		self.message_author_id = message.author.id
-		s_roles = message.server.roles
-		author_roles = message.author.roles
-		self.server_roles = [i.name.lower() for i in s_roles]
-		self.server_roles_permissions = [i.permissions.value for i in s_roles]
-		self.author_server_permissions = [i.permissions.value for i in author_roles]
 		try:
+			s_roles = message.server.roles
 			self.message_server_id = message.server.id
+			author_roles = message.author.roles
+			self.server_roles = [i.name.lower() for i in s_roles]
+			self.server_roles_permissions = [i.id for i in s_roles]
+			self.author_server_permissions = [i.id for i in author_roles]
 		except:
 			pass
 		self.message_channel = message.channel
-		if self.message.server.id in self.words_data and await self.clean_message(message.content.split()):
+		if self.message.server != None and self.message.server.id in self.words_data and await self.clean_message(message.content.split()):
 			return
 		if '┻━┻' in self.message.content and '>(' not in self.message.content:
 			await self.d_client.send_message(self.message_channel,'(ヘಠ益ಠ)ヘ┳━┳')
@@ -167,7 +188,9 @@ class Bot:
 				need_to = True
 				await self.bot_functions[f](message.content.split(f).pop())
 			if need_to:
-				self._create_log('{}({}) requested {} from {} at {}'.format(message.author,message.author.id,message.content,message.server,time.strftime("%H:%M:%S")))
+				content = '{}({}) requested {} from {} at {}'.format(message.author,message.author.id,message.content,message.server,time.strftime("%H:%M:%S"))
+				without = '{} requested {} from {} at {}'.format(message.author,message.content,message.server,time.strftime("%H:%M:%S"))
+				self._create_log(content, without)
 		self._clean_vars()
 
 	def _clean_vars(self):
@@ -201,7 +224,8 @@ class Bot:
 			elif not an_id:
 				await self.d_client.send_message(self.message.channel,'Not found')
 			else:
-				secs = next_anime.search_with_id(an_id,self.al_client)
+				episode_data = next_anime.search_with_id(an_id,self.al_client)
+				secs = episode_data[0]
 				the_dict = next_anime.date_things(secs,0,content,1)
 				order = ['day', 'hour', 'minute', 'second']
 				the_string = ''
@@ -212,7 +236,7 @@ class Bot:
 							the_string += 's' + ' '
 						else:
 							the_string += ' '
-				await self.d_client.send_message(self.message_channel, the_string + 'until next episode')
+				await self.d_client.send_message(self.message_channel, the_string + 'until episode {}'.format(episode_data[1]))
 		except:
 			await self.d_client.send_message(self.message_channel, "Not found")
 			print('ERROR with $next')
@@ -233,18 +257,19 @@ class Bot:
 			await self.d_client.send_message(self.message_channel, 'Not found')
 		else:
 			#Get id from url
-			an_id = url.split('/')[4]
-			response = self.al_client.get('anime/',an_id,'/page')['image_url_lge']
-			filename = ANIME_PATH + response.split('/')[-1]
+			#an_id = url.split('/')[4]
+			#response = self.al_client.get('anime/',an_id,'/page')['image_url_lge']
+			#filename = ANIME_PATH + response.split('/')[-1]
 			#if the file is not saved
-			if response.split('/')[-1] not in os.listdir(ANIME_PATH):
-				print('Not in path')
-				file = urllib.request.urlopen(urllib.request.Request(response, headers={'User-Agent':'next_anime/0.0.0'}))
-				output = open(filename, 'wb')
-				output.write(file.read())
-				output.close()
-			image = await self.d_client.send_file(self.message_channel, filename)
-			await self.d_client.edit_message(image, url)
+			#if response.split('/')[-1] not in os.listdir(ANIME_PATH):
+				#print('Not in path')
+				#file = urllib.request.urlopen(urllib.request.Request(response, headers={'User-Agent':'next_anime/0.0.0'}))
+				#output = open(filename, 'wb')
+				#output.write(file.read())
+				#output.close()
+			await self.d_client.send_message(self.message.channel,url)
+			#image = await self.d_client.send_file(self.message_channel, filename)
+			#await self.d_client.edit_message(image, url)
 
 	async def character_search(self,content):
 		result = character_search.search_character(content,self.al_client)
@@ -290,7 +315,8 @@ class Bot:
 
 
 	async def free_week(self,*Nothing):
-		await self.d_client.send_message(self.message_channel,commands.free_week(self.r_client))
+		content = ', '.join(commands.free_week(self.r_client))
+		await self.d_client.send_message(self.message_channel,content)
 
 	async def mastery(self,content):
 		info = content.split()
@@ -356,15 +382,16 @@ class Bot:
 			os.system('clear && python3 Crushinator_bot.py')
 
 	async def help_only(self,*nothing):
-		await self.d_client.send_message(self.message_channel, documents.help_command)
+		await self.d_client.send_message(self.message.author, documents.help_command)
+		await self.d_client.send_message(self.message.channel, "I'm Nyoko, I'm helping Nya~")
 
 	async def help_command(self,content):
 		search = content.split()
 		for i in search:
 			if i in documents.help_a:
-				await self.d_client.send_message(self.message_channel,'**{}**\n{}'.format(i,documents.help_a[i]))
+				await self.d_client.send_message(self.message.author,'**{}**\n{}'.format(i,documents.help_a[i]))
 			else:
-				await self.d_client.send_message(self.message_channel, 'I can\'t help you with that')
+				await self.d_client.send_message(self.message.author, 'I can\'t help you with that')
 
 	async def tag_send(self,content):
 		if content in self.tag_data[self.message.server.id] and self.message.server.id in self.tag_data:
@@ -419,14 +446,15 @@ class Bot:
 
 	async def ban_word(self,content):
 		if self.message_server_id not in self.words_data:
-			if max(self.author_server_permissions) == max(self.server_roles_permissions):
-				self.words_data[self.message_server_id] = {'allowed_ranks':[], 'forbidden_words':[]}
-				self.words_data[self.message_server_id]['allowed_rands'].append(max(self.author_server_permissions))
-				self.words_data[self.message_server_id]['forbidden_words'].append(content)
-				await self.d_client.send_message(self.message_channel, 'Done')
-			else:
-				self.d_client.send_message(self.message_channel, 'You are not allowed to do that')
-				return
+			role_master = await self.d_client.create_role(self.message.server,name='Word master')
+			#if max(self.author_server_permissions) == max(self.server_roles_permissions):
+			self.words_data[self.message_server_id] = {'allowed_ranks':[], 'forbidden_words':[]}
+			self.words_data[self.message_server_id]['allowed_ranks'].append(role_master.id)
+			#self.words_data[self.message_server_id]['forbidden_words'].append(content)
+			await self.d_client.send_message(self.message_channel, 'Please, give to someone the "Word master" role')
+			#else:
+				#self.d_client.send_message(self.message_channel, 'You are not allowed to do that')
+				#return
 		elif at_least_one(self.author_server_permissions,self.words_data[self.message_server_id]['allowed_ranks']):
 			if content not in self.words_data:
 				self.words_data[self.message_server_id]['forbidden_words'].append(content)
@@ -472,7 +500,8 @@ class Bot:
 		if self.message_server_id not in self.words_data:
 			await self.d_client.send_message(self.message_channel,'Please, first ban any word')
 			return
-		if max(self.author_server_permissions) == max(self.server_roles_permissions):
+		#Has the "word master" role
+		if self.words_data[self.message.server.id]['allowed_ranks'][0] in self.author_server_permissions:
 			for i in self.words_data[self.message_server_id]['allowed_ranks']:
 				roles.append(self.server_roles[self.server_roles_permissions.index(i)])
 			await self.d_client.send_message(self.message_channel,', '.join(roles))
@@ -480,6 +509,9 @@ class Bot:
 			self.d_client.send_message(self.message_channel,'You can\'t do that')
 
 	async def del_ban_permissions(self,content):
+		if self.words[self.message.server.id][allowed_ranks][0] not in self.author_server_permissions:
+			await self.d_client.send_message(self.message_channel, "you cant do that")
+			return
 		role_id = self.server_roles_permissions[self.server_roles.index(content)]
 		if self.message_server_id not in self.words_data:
 			await self.d_client.send_message(self.message_channel,'Please, first ban any word')
