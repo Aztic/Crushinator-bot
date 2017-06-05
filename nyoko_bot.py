@@ -2,7 +2,7 @@ import bot
 import os
 import asyncio
 BOT_TOKEN = os.getenv('NYOKO_BOT_TOKEN')
-Nyoko = bot.Bot(BOT_TOKEN)
+Nyoko = bot.Bot(BOT_TOKEN,Command_Prefix='$',Tag_Prefix='&')
 
 
 @Nyoko.event
