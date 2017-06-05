@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from Anilist import next_anime, anime_search, character_search
+from anilist import AniList
 from Documentation import documents
 from Weather import weather_client
 import commands
@@ -57,10 +58,14 @@ def at_least_one(List_a, List_b):
 
 
 class Bot:
-	def __init__(self,Token=None):
+	def __init__(self,Token=None,Command_Prefix=None,Tag_Prefix=None):
 
 		if Token is None or not isinstance(Token,str):
 			raise('You must pass client')
+		if Command_Prefix is None or not isinstance(Command_Prefix,str):
+			raise('Hey, at least pass a prefix y\'know')
+		if Tag_Prefix is None or not isinstance(Tag_Prefix,str) or Tag_Prefix == Command_Prefix:
+			raise('invalid tag prefix')
 
 
 		#os.system('gnome-terminal')
@@ -68,10 +73,12 @@ class Bot:
 		#self.terminal_log = '/dev/pts/' + temp
 		#Clients
 		self.token = Token
+		self.command_prefix = Command_Prefix
+		self.tag_prefix = Tag_Prefix
 		self.d_client = discord.Client()
 		self.r_client = Riot(RIOT_KEY)
 		self.op_client = weather_client.Weather(API_KEY)
-		self.al_client = next_anime.client
+		self.al_client = AniList(client_id=CLIENT_ID,client_secret=CLIENT_SECRET)
 
 		self.message = ''
 		self.message_author = ''
@@ -90,39 +97,39 @@ class Bot:
 		self.optional_data_f = ['$ban word','$allow ban', '$unban word ', '$banned words'
 								'$see ban permissions', '$delete ban permissions ', '$tyranny ']
 		self.bot_functions = {
-			'$next ':self.next_episode,
-			'$anime ':self.anime,
-			'$free week':self.free_week,
-			'$mastery ':self.mastery,
-			'$sumDivision ':self.sum_division,
-			'$current game ':self.current_game,
-			'$weather save ':self.weather_save,
-			'$weather_only':self.weather_only,
-			'$weather ':self.load_weather,
-			'$restart':self.restart_bot,
-			'$help_only':self.help_only,
-			'$help ':self.help_command,
-			'&':self.tag_send,
-			'$tag save ':self.tag_save,
-			'$tag list':self.tag_list,
-			'$choose ':self.choose_options,
-			'$der ':self.function_der,
-			'$tyranny ':self.tyranny,
-			'$see ban permissions':self.ban_permissions,
-			'$delete ban permissions ':self.del_ban_permissions,
-			'$ban word ':self.ban_word,
-			'$allow ban ':self.allow_ban_word,
-			'$unban word ':self.unban_word,
-			'$banned words':self.banned_words,
-			'$say ':self.bot_say,
-			'$change game ':self.change_game,
-			'$manga ':self.anime,
-			'$ud ':self.urban_dictionary,
-			'$to_kanji ':self.jisho,
-			'$to_def ': self.jisho,
-			"$purge ":self.purge,
-			'$clean channel':self.purge_all,
-			'$character ':self.character_search,
+			'next ':self.next_episode,
+			'anime ':self.anime,
+			'free week':self.free_week,
+			'mastery ':self.mastery,
+			'sumDivision ':self.sum_division,
+			'current game ':self.current_game,
+			'weather save ':self.weather_save,
+			'weather_only':self.weather_only,
+			'weather ':self.load_weather,
+			'restart':self.restart_bot,
+			'help_only':self.help_only,
+			'help ':self.help_command,
+			self.tag_prefix:self.tag_send,
+			'tag save ':self.tag_save,
+			'tag list':self.tag_list,
+			'choose ':self.choose_options,
+			'der ':self.function_der,
+			'tyranny ':self.tyranny,
+			'see ban permissions':self.ban_permissions,
+			'delete ban permissions ':self.del_ban_permissions,
+			'ban word ':self.ban_word,
+			'allow ban ':self.allow_ban_word,
+			'unban word ':self.unban_word,
+			'banned words':self.banned_words,
+			'say ':self.bot_say,
+			'change game ':self.change_game,
+			'manga ':self.anime,
+			'ud ':self.urban_dictionary,
+			'to_kanji ':self.jisho,
+			'to_def ': self.jisho,
+			"purge ":self.purge,
+			'clean channel':self.purge_all,
+			'character ':self.character_search,
 		}
 
 	def __repr__(self):
@@ -173,17 +180,20 @@ class Bot:
 			await self.d_client.send_message(self.message_channel,'(ヘಠ益ಠ)ヘ┳━┳')
 		for i in content:
 		#special case
-			if i == '$weather':
+			if i == self.command_prefix + 'weather':
 				await self.weather_only()
 				need_to = True
-			elif i == '$help':
+			elif i == self.command_prefix + 'help':
 				await self.help_only()
 				need_to = True
 			else:
-				for index in self.bot_functions:
-					if i.startswith(index):
-						f = index
-						break
+				if i.startswith(self.tag_prefix):
+					f = self.tag_prefix
+				else:
+					for index in self.bot_functions:
+						if i.startswith(self.command_prefix + index):
+							f = index
+							break
 			if f:
 				need_to = True
 				await self.bot_functions[f](message.content.split(f).pop())
@@ -571,7 +581,7 @@ class Bot:
 
 	async def change_game(self,content=None):
 		if content is None:
-			content = '$help'
+			content = self.command_prefix+'help'
 		elif self.message.author.id != P_ID:
 			return
 		await self.d_client.change_presence(game=discord.Game(name=content))
