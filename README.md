@@ -17,7 +17,7 @@ For almost every client, you'll need respective API's token. Put them in "tokens
 ### Config
   You have a config file with JSON format where you can put some "simple" options, like database integration.
   
-### Database integration
+## Database integration
   #### Requirements
   - [MySQL](https://www.mysql.com/)
   - [MySQLdb](https://sourceforge.net/projects/mysql-python/)
