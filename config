@@ -1,0 +1,16 @@
+{
+	"use_database":false,
+	"bot_name":"Nyoko",
+	"tag_file":"tags",
+	"weather_file":"weathers",
+	"word_file":"words",
+	"tokens":{
+    "your_tokens":"here"
+	},
+	"db_config":{
+		"user": "user",
+		"passwd": "password",
+		"host": "localhost"
+	}
+
+}
