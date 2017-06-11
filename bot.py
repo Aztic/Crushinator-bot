@@ -10,14 +10,17 @@ from random import choice
 from functions import Function
 from Html_libs import html_content
 import discord
+import difflib
 import requests
 import time
 import urllib.request
 import json
 import asyncio
 import os
-
-TOKENS = json.load(open('tokens','r'))
+import backup
+CONFIG = json.load(open('config','r'))
+TOKENS = CONFIG['tokens']
+#TOKENS = json.load(open('tokens','r'))
 
 RIOT_KEY = TOKENS['RIOT_API_KEY']
 BOT_TOKEN = TOKENS['CRUSHINATOR_BOT_TOKEN']
@@ -58,21 +61,15 @@ def at_least_one(List_a, List_b):
 
 
 class Bot:
-	def __init__(self,Token=None,Command_Prefix=None,Tag_Prefix=None):
+	def __init__(self,Command_Prefix=None,Tag_Prefix=None):
 
-		if Token is None or not isinstance(Token,str):
-			raise('You must pass client')
 		if Command_Prefix is None or not isinstance(Command_Prefix,str):
 			raise('Hey, at least pass a prefix y\'know')
 		if Tag_Prefix is None or not isinstance(Tag_Prefix,str) or Tag_Prefix == Command_Prefix:
 			raise('invalid tag prefix')
 
-
-		#os.system('gnome-terminal')
-		#temp = os.listdir('/dev/pts/')[0]
-		#self.terminal_log = '/dev/pts/' + temp
 		#Clients
-		self.token = Token
+		self.token = CONFIG['tokens']['NYOKO_BOT_TOKEN']
 		self.command_prefix = Command_Prefix
 		self.tag_prefix = Tag_Prefix
 		self.d_client = discord.Client()
@@ -90,9 +87,9 @@ class Bot:
 		self.server_roles_permissions = []
 
 		#data load
-		self.words_data = json.load(open('words'))
-		self.weather_data = json.load(open('weathers'))
-		self.tag_data = json.load(open('tags'))
+		self.words_data = json.load(open(CONFIG['word_file']))
+		self.weather_data = json.load(open(CONFIG['weather_file']))
+		self.tag_data = json.load(open(CONFIG['tag_file']))
 
 		self.optional_data_f = ['$ban word','$allow ban', '$unban word ', '$banned words'
 								'$see ban permissions', '$delete ban permissions ', '$tyranny ']
@@ -112,6 +109,7 @@ class Bot:
 			self.tag_prefix:self.tag_send,
 			'tag save ':self.tag_save,
 			'tag list':self.tag_list,
+			'rename tag':self.tag_rename,
 			'choose ':self.choose_options,
 			'der ':self.function_der,
 			'tyranny ':self.tyranny,
@@ -130,6 +128,7 @@ class Bot:
 			"purge ":self.purge,
 			'clean channel':self.purge_all,
 			'character ':self.character_search,
+			'backup': self.backup_data
 		}
 
 	def __repr__(self):
@@ -367,7 +366,7 @@ class Bot:
 
 	async def weather_save(self,content):
 		self.weather_data[self.message_author_id] = content
-		json.dump(self.weather_data,open('weathers','w'))
+		json.dump(self.weather_data,open(CONFIG['weather_file'],'w'))
 		await self.d_client.send_message(self.message_channel,'Saved Successfully')
 
 	async def weather_only(self,*nothing):
@@ -407,13 +406,28 @@ class Bot:
 		if content in self.tag_data[self.message.server.id] and self.message.server.id in self.tag_data:
 			await self.d_client.send_message(self.message_channel,self.tag_data[self.message.server.id][content])
 		else:
-			await self.d_client.send_message(self.message_channel,"Unknown tag")
+			options = difflib.get_close_matches(content,self.tag_data[self.message.server.id])
+			await self.d_client.send_message(self.message_channel,"Unknown tag, did you mean:{}".format(', '.join(options)) if options else "Unknown tag")
 
 	async def tag_list(self,*nothing):
 		if self.message.server.id in self.tag_data and self.tag_data[self.message.server.id]:
-			await self.d_client.send_message(self.message_channel,'```{}```'.format(', '.join(list(self.tag_data[self.message.server.id]))))
+			await self.d_client.send_message(self.message_channel,'```{}```'.format('\n'.join(list(self.tag_data[self.message.server.id]).sort())))
 		else:
 			await self.d_client.send_message(self.message_channel,"Empty")
+
+	async def tag_rename(self,content):
+		old = None
+		for key in self.tag_data[self.message.server.id]:
+			if key in content:
+				old = key
+				break
+		if old and self.message.server.id:
+			new = content.split(old + ' ').pop()
+			self.tag_data[self.message.server.id][new] = self.tag_data[self.message.server.id].pop(old)
+			json.dump(self.tag_data,open(CONFIG['tag_file'],'w'))
+			await self.d_client.send_message(self.message.channel,"Done")
+		else:
+			await self.d_client.send_message(self.message.channel,"Not found")
 
 	async def tag_save(self,content):
 		splitted = content.split()
@@ -435,7 +449,7 @@ class Bot:
 				self.tag_data[self.message.server.id] = {}
 			self.tag_data[self.message.server.id][name1] = url
 			await self.d_client.edit_message(t_m_p,'Saved successfully')
-			json.dump(self.tag_data,open('tags','w'))
+			json.dump(self.tag_data,open(CONFIG['tag_file'],'w'))
 			return
 		try:
 			t_m_p = await self.d_client.send_message(self.message_channel,'Uploading...')
@@ -449,7 +463,7 @@ class Bot:
 			else:
 				await self.d_client.send_message(self.message_channel,'Error, can\'t upload')
 				return
-			json.dump(self.tag_data,open('tags','w'))
+			json.dump(self.tag_data,open(CONFIG['tag_file'],'w'))
 			await self.d_client.edit_message(t_m_p,'Saved successfully')
 		except:
 			await self.d_client.send_message(self.message_channel, 'Error')
@@ -473,7 +487,7 @@ class Bot:
 				await self.d_client.send_message(self.message_channel, 'Already banned')
 		else:
 			await self.d_client.send_message(self.message_channel, 'You can\'t do that')
-		json.dump(self.words_data,open('words','w'))
+		json.dump(self.words_data,open(CONFIG['word_file'],'w'))
 
 	async def allow_ban_word(self,content):
 		if self.message_server_id not in self.words_data:
@@ -484,7 +498,7 @@ class Bot:
 			await self.d_client.send_message(self.message_channel,'You can\'t do that')
 		else:
 			self.words_data[self.message_server_id]['allowed_ranks'].append(self.server_roles_permissions[self.server_roles.index(content)])
-			json.dump(self.words_data,open('words','w'))
+			json.dump(self.words_data,open(CONFIG['word_file'],'w'))
 
 	async def unban_word(self,content):
 		if self.message_server_id not in self.words_data:
@@ -494,7 +508,7 @@ class Bot:
 				await self.d_client.send_mesage(self.message_channel,'That word is not banned')
 			else:
 				self.words_data[self.message_server_id]['forbidden_words'].remove(content)
-				json.dump(self.words_data,open('words','w'))
+				json.dump(self.words_data,open(CONFIG['word_file'],'w'))
 				await self.d_client.send_message(self.message_channel,'Done')
 		else:
 			await self.d_client.send_message(self.message_channel,'You can\'t do that')
@@ -628,5 +642,16 @@ class Bot:
 			if message_step.channel == target_channel:
 				self.d_client.delete_message(message_step)
 
+	async def backup_data(self,*content):
+		if not CONFIG.use_database or self.message.author.id != P_ID:
+			return
+		user = CONFIG['db_config']['user']
+		password = CONFIG['db_config']['passwd']
+		host = CONFIG['db_config']['host']
+		data = {'tags':self.tag_data,'weather':self.weather_data}
+		try:
+			backup.backup_data(CONFIG['bot_name'],user,password,host)
+		except:
+			print("Error doing backup")
 
 
