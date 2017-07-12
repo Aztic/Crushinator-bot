@@ -20,7 +20,6 @@ import os
 import backup
 CONFIG = json.load(open('config','r'))
 TOKENS = CONFIG['tokens']
-#TOKENS = json.load(open('tokens','r'))
 
 RIOT_KEY = TOKENS['RIOT_API_KEY']
 BOT_TOKEN = TOKENS['CRUSHINATOR_BOT_TOKEN']
@@ -91,8 +90,6 @@ class Bot:
 		self.weather_data = json.load(open(CONFIG['weather_file']))
 		self.tag_data = json.load(open(CONFIG['tag_file']))
 
-		self.optional_data_f = ['$ban word','$allow ban', '$unban word ', '$banned words'
-								'$see ban permissions', '$delete ban permissions ', '$tyranny ']
 		self.bot_functions = {
 			'next ':self.next_episode,
 			'anime ':self.anime,
@@ -265,6 +262,7 @@ class Bot:
 		if not url:
 			await self.d_client.send_message(self.message_channel, 'Not found')
 		else:
+			#uncomment this if you want to save images locally
 			#Get id from url
 			#an_id = url.split('/')[4]
 			#response = self.al_client.get('anime/',an_id,'/page')['image_url_lge']
@@ -388,7 +386,7 @@ class Bot:
 
 	async def restart_bot(self,*nothing):
 		if self.message_author_id == P_ID:
-			os.system('clear && python3 Crushinator_bot.py')
+			os.system('clear && python3 nyoko_bot.py')
 
 	async def help_only(self,*nothing):
 		await self.d_client.send_message(self.message.author, documents.help_command)
