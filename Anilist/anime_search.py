@@ -5,7 +5,7 @@ CLIENT_ID = os.getenv('ANILIST_CLIENT_ID')
 CLIENT_SECRET = os.getenv('ANILIST_CLIENT_SECRET')
 client = AniList(client_id=CLIENT_ID, client_secret=CLIENT_SECRET)
 BASE_URL = 'http://anilist.co/anime/'
-special_characters = [',', ';', '.', ':', '=', '(', ')', '!','?']
+special_characters = [',', ';', '.', ':', '=', '(', ')', '!','?', '/',' ']
 
 def search_thing(name, path, a_object):
 	the_list = a_object.get(path)
@@ -17,7 +17,7 @@ def search_thing(name, path, a_object):
 				for x in special_characters:
 					if x in i['title_romaji']:
 						i['title_romaji'] = i['title_romaji'].replace(x,'')
-				url = url + i['title_romaji'].replace(' ', '')
+				url = url + i['title_romaji']
 				return url
 	return None
 
@@ -34,6 +34,6 @@ def splitted_search(names, path, a_object):
 					for x in special_characters:
 						if x in content['title_romaji']:
 							content['title_romaji'] = content['title_romaji'].replace(x, '')
-					url = url + content['title_romaji'].replace(' ', '')
+					url = url + content['title_romaji']
 					return url
 	return None
