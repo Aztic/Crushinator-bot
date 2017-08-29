@@ -32,4 +32,8 @@ For words and weather information, it have this style
 |   ....    | ..... | ...... |
 |   id_n    | name_n | value_n |
 
+## TODO
+- Embeds
+- Music commands
+- Rewrite all the code 
 
