@@ -1,0 +1,15 @@
+{
+	"use_database":false,
+	"database": "MySQL",
+	"bot_name":"Nyoko",
+	"tokens":{
+		"your_tokens":"here"
+	},
+	"db_config":{
+		"user": "user",
+		"passwd": "password",
+		"host": "localhost"
+	}
+
+}
+
