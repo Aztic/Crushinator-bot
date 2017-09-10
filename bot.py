@@ -5,7 +5,7 @@ import modules
 import time
 import os
 
-nyoko = commands.Bot(command_prefix='~',pm_help=True)
+nyoko = commands.Bot(command_prefix='$',pm_help=True)
 CONFIG = json.load(open('config','r'))
 LOG_PATH = os.path.join(os.getcwd(), 'Logs')
 modules.add_modules(nyoko)
@@ -17,7 +17,7 @@ async def on_ready():
     print("logged in as")
     print(nyoko.user.name)
     print(nyoko.user.id)
-    await nyoko.change_presence(game=discord.Game(name="food"))
+    await nyoko.change_presence(game=discord.Game(name="$help"))
 
 @nyoko.event
 async def on_command(ctx):
