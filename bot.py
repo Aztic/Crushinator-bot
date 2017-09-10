@@ -8,7 +8,7 @@ import os
 nyoko = commands.Bot(command_prefix='~',pm_help=True)
 CONFIG = json.load(open('config','r'))
 LOG_PATH = os.path.join(os.getcwd(), 'Logs')
-modules.add_modules(rindou)
+modules.add_modules(nyoko)
 if not discord.opus.is_loaded():
     discord.opus.load_opus('opus')
 
